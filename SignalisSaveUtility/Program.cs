@@ -10,13 +10,13 @@ namespace SignalisSaveSteganography
         {
             if (args.Length < 2)
             {
-                Console.WriteLine("sigsteg dataPath encode");
-                Console.WriteLine("sigsteg imagePath decode");
-                Console.WriteLine("sigsteg scrambledDataPath sdecode");
+                Console.WriteLine("ssu dataPath encode");
+                Console.WriteLine("ssu imagePath decode");
+                Console.WriteLine("ssu scrambledDataPath sdecode");
                 Console.WriteLine();
                 Console.WriteLine("Other:");
-                Console.WriteLine("sigsteg templatePath dataPath encode");
-                Console.WriteLine("sigsteg templatePath imagePath decode");
+                Console.WriteLine("ssu templatePath dataPath encode");
+                Console.WriteLine("ssu templatePath imagePath decode");
                 return;
             }
 
