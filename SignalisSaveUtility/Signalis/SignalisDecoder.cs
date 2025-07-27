@@ -59,7 +59,7 @@ namespace SignalisSaveSteganography.Signalis
                 output.WriteByte(bits[i]);
         }
 
-        public void DecodeFile(string path)
+        public void ScrambleFile(string path)
         {
             using var open = File.OpenRead(path);
             using var newFile = File.OpenWrite($"{Path.GetFileNameWithoutExtension(path)}.json");

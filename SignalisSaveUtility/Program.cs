@@ -12,7 +12,7 @@ namespace SignalisSaveSteganography
             {
                 Console.WriteLine("ssu dataPath encode");
                 Console.WriteLine("ssu imagePath decode");
-                Console.WriteLine("ssu scrambledDataPath sdecode");
+                Console.WriteLine("ssu scrambledDataPath scramble (this also unscrambles)");
                 Console.WriteLine();
                 Console.WriteLine("Other:");
                 Console.WriteLine("ssu templatePath dataPath encode");
@@ -56,10 +56,10 @@ namespace SignalisSaveSteganography
 
                     decoder.DecodeSteganography(path1, path2);
                     break;
-                case "sdecode":
+                case "scramble":
                     var sdecoder = new SignalisDecoder();
 
-                    sdecoder.DecodeFile(path1);
+                    sdecoder.ScrambleFile(path1);
                     break;
             }
         }

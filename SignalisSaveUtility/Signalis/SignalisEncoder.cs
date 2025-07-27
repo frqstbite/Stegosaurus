@@ -19,32 +19,36 @@ namespace SignalisSaveSteganography.Image
             {
                 for (int x = 0; x < skBitmap.Width; x++)
                 {
-                    //Read byte per byte.
-                    if (bit_index % 8 == 0)
-                        readResult = dataStream.Read(buffer, 0, 1);
-
-                    //We reached EOF.
-                    if (readResult <= 0)
-                        break;
-
                     var pImg = skBitmap.GetPixel(x, y);
 
                     byte r = pImg.Red, g = pImg.Green, b = pImg.Blue;
 
                     for (int c = 0; c < 3; c++)
                     {
-                        byte bit = (byte)((buffer[0] >> (bit_index % 8)) & 1);
-                        bit_index++;
+                        if (bit_index % 8 == 0)
+                            readResult = dataStream.Read(buffer, 0, 1);
 
-                        switch (c)
+                        //EOF
+                        if (readResult > 0)
                         {
-                            case 0: r = CalculateChannelData(bit, r); break;
-                            case 1: g = CalculateChannelData(bit, g); break;
-                            case 2: b = CalculateChannelData(bit, b); break;
+                            byte bit = (byte)((buffer[0] >> (bit_index % 8)) & 1);
+                            bit_index++;
+
+                            switch (c)
+                            {
+                                case 0: r = CalculateChannelData(bit, r); break;
+                                case 1: g = CalculateChannelData(bit, g); break;
+                                case 2: b = CalculateChannelData(bit, b); break;
+                            }
+                            skBitmap.SetPixel(x, y, new SKColor(r, g, b, pImg.Alpha));
+                        }
+                        else
+                        {
+                            y = -1;
+                            x = skBitmap.Width;
+                            break;
                         }
                     }
-
-                    skBitmap.SetPixel(x, y, new SKColor(r, g, b, pImg.Alpha));
                 }
             }
 
