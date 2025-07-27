@@ -59,7 +59,7 @@ namespace SignalisSaveSteganography
                 case "scramble":
                     var sdecoder = new SignalisDecoder();
 
-                    sdecoder.ScrambleFile(path1);
+                    sdecoder.ScrambleFile(path2);
                     break;
             }
         }
