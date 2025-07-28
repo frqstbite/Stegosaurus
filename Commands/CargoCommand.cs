@@ -156,11 +156,7 @@ namespace Stegosaurus.Commands
             {
                 Arity = ArgumentArity.ExactlyOne,
                 Description = "A path to the file to write the decoded data to. Use '-' for stdout.",
-                DefaultValueFactory = result =>
-                {
-                    var input = result.GetValue(inputParameter)!;
-                    return input == "-" ? "-" : $"{Path.GetFileNameWithoutExtension(input)}.json";
-                },
+                DefaultValueFactory = result => "-",
             };
 
 			// Constructor
@@ -198,7 +194,7 @@ namespace Stegosaurus.Commands
 			{
 				Arity = ArgumentArity.ZeroOrOne,
 				Description = "A path to the .png file to write the decoded data to. Use '-' for stdout.",
-				DefaultValueFactory = result => $"{Path.GetFileNameWithoutExtension(result.GetValue(inputParameter)!)}.json",
+				DefaultValueFactory = result => "-",
 			};
 
 			// Constructor
