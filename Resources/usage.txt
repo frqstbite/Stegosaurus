@@ -1,0 +1,18 @@
+﻿Stegosaurus v1.0.0
+
+Usage: steg encode <path>
+Deletes all files and folders at "path", recursively.
+
+Usage:
+  steg 
+
+Options:
+  -h --help            Display this usage info
+  --version            Display version
+  --preserve-root      Do not remove '/' recursively (default)
+  --no-preserve-root   Do not treat '/' specially
+  -G --no-glob         Treat arguments as literal paths, not globs (default)
+  -g --glob            Treat arguments as glob patterns
+  -v --verbose         Be verbose when performing operations
+  -i --interactive     Ask for confirmation before deleting anything
+                       Not compatible with --impl=native

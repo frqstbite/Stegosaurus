@@ -1,4 +1,6 @@
-﻿namespace SignalisSaveSteganography.Global
+﻿using System.Net.NetworkInformation;
+
+namespace Stegosaurus.Signalis
 {
     public static class SignalisVariables
     {
