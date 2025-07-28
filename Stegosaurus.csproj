@@ -9,16 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Resources\penrose.txt" />
-    <None Remove="Resources\usage.txt" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\penrose.txt" />
     <EmbeddedResource Include="Resources\carrier.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="Resources\usage.txt" />
   </ItemGroup>
 
   <ItemGroup>

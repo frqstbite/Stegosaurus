@@ -1,5 +1,4 @@
 ﻿using SkiaSharp;
-using Stegosaurus.Signalis;
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
@@ -12,8 +11,6 @@ namespace Stegosaurus.Commands
 {
 	internal class CargoCommand : Command
 	{
-
-
 		public CargoCommand() : base("cargo", "Encode & decode Signalis's steganographic \"cargo\" images.")
 		{
 			Subcommands.Add(new CargoDecodeCommand());
@@ -125,7 +122,7 @@ namespace Stegosaurus.Commands
 			// We only want the bit from the mask so we multiply it by 10 to counteract compression
 			var encoded = (data * 10);
 
-			//If color channel + encoded value overflow, substract instead.
+			//If color channel + imagePNG value overflow, substract instead.
 			if ((color + encoded) > 255)
 				encoded *= -1;
 
@@ -139,36 +136,48 @@ namespace Stegosaurus.Commands
             {
                 Arity = ArgumentArity.ExactlyOne,
                 Description = "A path to the cargo PNG image to decode. Use '-' for stdin.",
-                CustomParser = result =>
-                {
-                    var value = result.Tokens.FirstOrDefault()?.Value;
-                    if (value != "-" && !File.Exists(value ?? ""))
-                    {
-						result.AddError($"File '{value}' does not exist.");
-                    }
-					return value;
-                },
-                DefaultValueFactory = result => "-",
+                DefaultValueFactory = result => IOSource.STDIO.ToString(),
             };
 
             // Options
             private static readonly Option<string> outputOption = new("--output", "-o")
             {
-                Arity = ArgumentArity.ExactlyOne,
+                Arity = ArgumentArity.ZeroOrOne,
                 Description = "A path to the file to write the decoded data to. Use '-' for stdout.",
-                DefaultValueFactory = result => "-",
+                DefaultValueFactory = result => IOSource.STDIO.ToString(),
             };
 
 			// Constructor
 			public CargoDecodeCommand() : base("decode", "Decode data from an IO stream or cargo image file.")
 			{
+				inputParameter.Validators.Add(IOSource.GetIOSourceValidator(inputParameter, true));
 				Arguments.Add(inputParameter);
-				Options.Add(outputOption);
-				SetAction(async result =>
+
+				outputOption.Validators.Add(IOSource.GetIOSourceValidator(outputOption, false));
+                Options.Add(outputOption);
+				
+				SetAction(async (result, cancel) =>
 				{
-					var inputArgument = result.GetValue(inputParameter)!;
-					//CargoCommand.Decode(inputArgument.FullName);
-				});
+                    // Read the input
+                    var inputArgument = result.GetValue(inputParameter)!;
+					using var input = IOSource.ReadFromSource(inputArgument);
+
+					// Decode the input data from the cargo image
+					var bitmap = SKBitmap.Decode(input);
+					if (bitmap is null)
+					{
+						Console.Error.WriteLine("Failed to decode the input image. Ensure it is a valid cargo PNG image.");
+						return;
+					}
+
+                    var data = Decode(bitmap);
+
+                    // Save the result!
+                    var outputArgument = result.GetValue(outputOption)!;
+					using var output = IOSource.WriteFromSource(outputArgument);
+
+                    await output.WriteAsync(data, cancel);
+                });
 			}
 		}
 
@@ -178,15 +187,8 @@ namespace Stegosaurus.Commands
 			private static readonly Argument<string> inputParameter = new("input")
 			{
 				Arity = ArgumentArity.ExactlyOne,
-				Description = "A path to a JSON (.json) file to encode. Use '-' for stdin.",
-				Validators = {
-					
-					(result) =>
-					{
-
-					}
-				},
-				DefaultValueFactory = result => "-",
+				Description = "A path to a file containing data to encode. Use '-' for stdin.",
+				DefaultValueFactory = result => IOSource.STDIO.ToString(),
 			};
 
 			// Options
@@ -194,27 +196,33 @@ namespace Stegosaurus.Commands
 			{
 				Arity = ArgumentArity.ZeroOrOne,
 				Description = "A path to the .png file to write the decoded data to. Use '-' for stdout.",
-				DefaultValueFactory = result => "-",
+				DefaultValueFactory = result => IOSource.STDIO.ToString(),
 			};
 
 			// Constructor
 			public CargoEncodeCommand() : base("encode", "Encode a byte payload to an IO stream or cargo image file.")
 			{
-				Arguments.Add(inputParameter);
-				Options.Add(outputOption);
-				SetAction(async result =>
+				inputParameter.Validators.Add(IOSource.GetIOSourceValidator(inputParameter, true));
+                Arguments.Add(inputParameter);
+
+				outputOption.Validators.Add(IOSource.GetIOSourceValidator(outputOption, false));
+                Options.Add(outputOption);
+				
+				SetAction(async (result, cancel) =>
 				{
-					var inputArgument = result.GetValue(inputParameter)!;
-					using var input = File.OpenRead(inputArgument);
-                    var skBitmap = Encode(input);
+                    // Read the input
+                    var inputArgument = result.GetValue(inputParameter)!;
+					using var input = IOSource.ReadFromSource(inputArgument);
+
+                    // Encode the input data into a cargo image
+                    var image = SKImage.FromBitmap(Encode(input));
+					var imagePNG = image.Encode(SKEncodedImageFormat.Png, 100);
 
 					//Save the result!
-					var res = SKImage.FromBitmap(skBitmap);
-					var encoded = res.Encode(SKEncodedImageFormat.Png, 100);
-
 					var outputArgument = result.GetValue(outputOption)!;
-                    using var output = File.OpenWrite($"{Path.GetFileNameWithoutExtension(outputArgument)}.png");
-					encoded.SaveTo(output);
+					using var output = IOSource.WriteFromSource(outputArgument);
+
+                    await output.WriteAsync(imagePNG.ToArray(), cancel);
 				});
 			}
 		}
