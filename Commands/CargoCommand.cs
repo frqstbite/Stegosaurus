@@ -22,7 +22,7 @@ namespace Stegosaurus.Commands
         /// </summary>
         /// <param name="from">The stego bitmap to be decoded from.</param>
         /// <returns>The byte sequence concealed within the image.</returns>
-        private static byte[] Decode(SKBitmap from)
+        private static byte[] Decode(SKBitmap from, bool skipNonText = false)
 		{
 			var templateBitmap = SKBitmap.Decode(Program.CargoCarrier);
 
@@ -31,35 +31,49 @@ namespace Stegosaurus.Commands
 			var bits = new List<byte>();
 			byte current = 0;
 
+			//To begin at the starting left bracket. (JSON)
+			bool bracketPassed = false;
+
 			for (int y = from.Height - 1; y >= 0; y--)
 			{
 				for (int x = 0; x < from.Width; x++)
 				{
+					//All channels for the input image
 					var inputPixel = from.GetPixel(x, y);
 					byte[] inputChannel = { inputPixel.Red, inputPixel.Green, inputPixel.Blue };
 
+					//All channels for the original template
 					var templatePixel = templateBitmap.GetPixel(x, y);
 					byte[] templateChannel = { templatePixel.Red, templatePixel.Green, templatePixel.Blue };
 
 					for (int c = 0; c < 3; c++)
 					{
+						//Check if the channel differs from the input and the template image
 						int bit = inputChannel[c] != templateChannel[c] ? 1 : 0;
+
+						//build the data back up bit-per-bit with the bitpos
 						current |= (byte)(bit << bitPos);
 						bitPos++;
 
+						//We did a full byte, we can now move on.
 						if (bitPos == 8)
 						{
-							bits.Add(current);
-							current = 0;
-							bitPos = 0;
-						}
+							//To start writing at the first left curly bracket.
+							if (((char)current) == '{')
+								bracketPassed = true;
+
+							//Quick hack to not include null bytes.
+							if ((current != 0 && bracketPassed) || !skipNonText)
+							{
+								bits.Add(current);
+							}
+
+                            current = 0;
+                            bitPos = 0;
+                        }
 					}
 				}
 			}
-
-			int last = bits.Count - 1;
-			while (last >= 0 && bits[last] == 0)
-				last--;
 
 			return [.. bits];
 		}
@@ -84,10 +98,12 @@ namespace Stegosaurus.Commands
 				{
 					var pImg = skBitmap.GetPixel(x, y);
 
+					//Every channel of the pixel.
 					byte r = pImg.Red, g = pImg.Green, b = pImg.Blue;
 
 					for (int c = 0; c < 3; c++)
 					{
+						//Read byte per byte.
 						if (bit_index % 8 == 0)
 							readResult = data.Read(buffer, 0, 1);
 
@@ -100,15 +116,19 @@ namespace Stegosaurus.Commands
 							break;
 						}
 
+						//Shift the current bit to the right (little endian).
 						byte bit = (byte)((buffer[0] >> (bit_index % 8)) & 1);
 						bit_index++;
 
+						//Depending what channel we're on, encode the bit to that channel.
 						switch (c)
 						{
 							case 0: r = CargoCommand.EncodeChannel(bit, r); break;
 							case 1: g = CargoCommand.EncodeChannel(bit, g); break;
 							case 2: b = CargoCommand.EncodeChannel(bit, b); break;
 						}
+
+						//Write result to channel.
 						skBitmap.SetPixel(x, y, new SKColor(r, g, b, pImg.Alpha));
 					}
 				}
@@ -147,16 +167,25 @@ namespace Stegosaurus.Commands
                 DefaultValueFactory = result => IOSource.STDIO.ToString(),
             };
 
-			// Constructor
-			public CargoDecodeCommand() : base("decode", "Decode data from an IO stream or cargo image file.")
+            private static readonly Option<bool> nonTextOption = new("--skip-non-text", "-s")
+            {
+                Arity = ArgumentArity.ZeroOrOne,
+                Description = "To skip the non text and trailing bytes.",
+				DefaultValueFactory = result => false
+            };
+
+            // Constructor
+            public CargoDecodeCommand() : base("decode", "Decode data from an IO stream or cargo image file.")
 			{
 				inputParameter.Validators.Add(IOSource.GetIOSourceValidator(inputParameter, true));
 				Arguments.Add(inputParameter);
 
 				outputOption.Validators.Add(IOSource.GetIOSourceValidator(outputOption, false));
+
                 Options.Add(outputOption);
-				
-				SetAction(async (result, cancel) =>
+                Options.Add(nonTextOption);
+
+                SetAction(async (result, cancel) =>
 				{
                     // Read the input
                     var inputArgument = result.GetValue(inputParameter)!;
@@ -170,7 +199,7 @@ namespace Stegosaurus.Commands
 						return;
 					}
 
-                    var data = Decode(bitmap);
+                    var data = Decode(bitmap, result.GetValue(nonTextOption));
 
                     // Save the result!
                     var outputArgument = result.GetValue(outputOption)!;
